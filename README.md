@@ -1,4 +1,4 @@
-## 使い方
+## 始め方
 
 1. プロジェクト直下に .cursor を追加：
 ```
@@ -10,6 +10,12 @@ git clone git@github.com:yourname/cursor-configs.git .cursor
 ```
 .cursor/
 ```
+
+## 使い方
+
+Cursorのチャットで /{filename} を実行
+
+引数とかをつけr
 
 ## 更新方法
 
