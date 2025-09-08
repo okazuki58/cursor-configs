@@ -15,7 +15,7 @@ git clone git@github.com:yourname/cursor-configs.git .cursor
 
 Cursorのチャットで /{filename} を実行
 
-引数とかをつけr
+引数をつけることができるコマンドもあるので、詳しくはファイルの中身を確認してください
 
 ## 更新方法
 
