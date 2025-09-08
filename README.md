@@ -18,3 +18,9 @@ Cursorのチャットで `/{filename}` を実行
 ```
 cd .cursor && git pull origin main
 ```
+
+## 注意
+Github CLIを使用するコマンドがあるのでインストールしておいてください
+```
+brew install gh
+```
