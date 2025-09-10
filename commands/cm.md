@@ -1,6 +1,6 @@
-# Commit Message (staged changes)
+# コミットメッセージ (ステージされた変更)
 
-Please read the following staged git diff and generate a concise and clear commit message in English using conventional commit format (feat:, fix:, refactor:, etc.).
+以下のステージされたgit diffを読み、conventional commit形式（feat:, fix:, refactor:など）を使用して、簡潔で明確なコミットメッセージを日本語で生成してください。
 
 ```bash
 {{exec:git diff --cached}}
