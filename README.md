@@ -24,3 +24,8 @@ Github CLIを使用するコマンドがあるのでインストールしてお�
 ```
 brew install gh
 ```
+
+
+## 参考ドキュメント
+https://docs.cursor.com/ja/agent/chat/commands
+https://docs.cursor.com/ja/context/rules
