@@ -1,0 +1,36 @@
+---
+description: Slack Bolt（TypeScript）を安全に運用するための最小ルール。型の扱いと公式URLを集約。
+globs: ["src/**/*.ts"]
+alwaysApply: true
+---
+
+# 目的
+- Boltのイベント/アクション/ビュー処理を型で堅牢化し、本番運用の落とし穴（await漏れ・ack遅延・レート制限）を回避する。
+
+# 公式ドキュメント（一次情報）
+- Bolt for JS: https://docs.slack.dev/tools/bolt-js/
+- Bolt インターフェース/引数: https://docs.slack.dev/tools/bolt-js/reference/
+- Web API（chat.postMessage など）: https://docs.slack.dev/apis/web-api/
+- chat.postMessage: https://docs.slack.dev/reference/methods/chat.postMessage
+- Block Kit（各Block定義）: https://docs.slack.dev/block-kit/
+- Events 一覧: https://docs.slack.dev/reference/events/
+- View submissions（モーダル）: https://docs.slack.dev/tools/bolt-js/concepts/view-submissions/
+- トークン種別（Bot/App-level等）: https://docs.slack.dev/authentication/tokens/
+- レート制限（429/Retry-After）: https://docs.slack.dev/apis/web-api/rate-limits
+
+# 型の基本方針
+- **リスナー引数は必ず型注釈**：`app.message`, `app.command`, `app.action`, `app.view` でイベント/アクション種別に合う型を明示。
+- **Block Kit は @slack/types の型準拠**：`blocks` は `KnownBlock[]` / `Block[]` で表現（文字列組み立て禁止）。
+- **Web API 呼び出しは型で拘束**：`WebClient['chat']['postMessage']` の引数・戻り値をそのまま利用（余計なプロパティを混入しない）。
+- **環境変数は型で必須化**：`SLACK_BOT_TOKEN`, `SLACK_SIGNING_SECRET`, 必要なら `APP_LEVEL_TOKEN` を起動時に検証（フェイルファスト）。
+
+# 実装ルール
+- **ack は3秒以内**：`view_submission`/スラッシュコマンド等は `ack()` を即返し、重処理は非同期へ委譲（キュー等）。
+- **await漏れ禁止**：`say`, `client.*` など Promise 戻りは全て `await`。未捕捉はエラーにする。
+- **レート制限対応**：429 は `Retry-After` 秒数だけ待機して再試行。指数バックオフ/最大回数を定義。
+- **ログ**：本番は構造化ログ（JSON）。トークンや個人情報はマスク。
+- **パス**：相対パス深掘りより `@/` エイリアスを推奨（別ファイルの汎用ルールに従う）。
+
+# テストと可観測性
+- ユースケース層は純粋関数＋戻り値型明示。ハンドラは薄く、モック可能に。
+- 主要フロー（コマンド/ボタン/モーダル送信）は最低1系統テストを維持。
