@@ -1,9 +1,6 @@
 ---
-description: "Rails 開発のベストプラクティス"
-globs: ["app/**/*.rb", "config/**/*.rb"]
 alwaysApply: false
 ---
-
 # Rails ガイドライン
 
 ## コントローラ

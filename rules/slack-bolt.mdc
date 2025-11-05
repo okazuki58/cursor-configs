@@ -1,9 +1,6 @@
 ---
-description: Slack Bolt（TypeScript）を安全に運用するための最小ルール。型の扱いと公式URLを集約。
-globs: ["src/**/*.ts"]
-alwaysApply: true
+alwaysApply: false
 ---
-
 # 目的
 - Boltのイベント/アクション/ビュー処理を型で堅牢化し、本番運用の落とし穴（await漏れ・ack遅延・レート制限）を回避する。
 
