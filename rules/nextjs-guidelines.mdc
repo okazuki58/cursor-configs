@@ -1,0 +1,404 @@
+---
+description: "Next.js App Router プロジェクトの設計・実装ガイドライン"
+globs: ["app/**/*.tsx", "app/**/*.ts", "components/**/*.tsx", "hooks/**/*.ts"]
+alwaysApply: true
+---
+
+# Next.js プロジェクト ガイドライン
+
+## 目的
+
+最初から適切な設計を行い、大規模なリファクタリングを必要としない保守性の高いコードを書く。
+
+---
+
+## 1. コンポーネント設計原則
+
+### 単一責務の原則（SRP）の徹底
+
+- 1つのコンポーネントは1つの責務のみを持つ
+- 100行を超えるコンポーネントは分割を検討
+- UIとロジックを分離（カスタムフック活用）
+
+### コンポーネントサイズの制約
+
+- **関数コンポーネント**: 150行以内を目標、200行を超えたら必ず分割
+- **複雑なロジック**: 50行以上のロジックはカスタムフックに抽出
+- **繰り返し表示される要素**: 子コンポーネントに分離
+
+### Props設計
+
+- **Props数**: 10個以内を推奨、15個を超えたらオブジェクトにまとめる
+- **boolean propsの乱立を避ける**: 状態を表すenumやunionを使用
+- **必須/任意を明確に型定義**: TypeScriptの型システムを活用
+
+---
+
+## 2. カスタムフックの活用
+
+### 分離基準
+
+- 状態管理ロジック（useState, useReducer）は50行超えたら分離
+- 副作用（useEffect）が3つ以上ある場合は分離を検討
+- API呼び出しを含むロジックは必ず分離
+- 再利用可能なロジックは積極的にフック化
+
+### 命名規則
+
+- ドメイン固有: `use{Domain}{Action}` 形式
+  - 例: `useTabManagement`, `useProjectActions`, `useUserAuth`
+- 汎用的なもの: `use{Action}` 形式
+  - 例: `useDebounce`, `useLocalStorage`, `usePrevious`
+
+### 返り値の設計
+
+- オブジェクトで返す（分割代入で必要なものだけ使用）
+- loading/error状態も含める
+- 複数のアクション関数をまとめて返す
+
+```typescript
+// 良い例
+function useProjectActions() {
+  return {
+    isLoading,
+    error,
+    createProject,
+    updateProject,
+    deleteProject,
+  };
+}
+
+// 使用側
+const { createProject, isLoading } = useProjectActions();
+```
+
+---
+
+## 3. サーバーコンポーネント vs クライアントコンポーネント
+
+### サーバーコンポーネント（デフォルト）
+
+以下の場合はサーバーコンポーネントを使用:
+
+- データフェッチングを含む場合
+- 環境変数やシークレットにアクセスする場合
+- インタラクションが不要な静的コンテンツ
+- SEOが重要なコンテンツ
+
+### クライアントコンポーネント（'use client'）
+
+以下の場合はクライアントコンポーネントを使用:
+
+- useState, useEffect等のReact Hooksを使用する場合
+- イベントハンドラー（onClick, onChange等）を使用する場合
+- ブラウザAPIを使用する場合（localStorage, window等）
+- サードパーティのインタラクティブライブラリを使用する場合
+
+### 最適化の原則
+
+- **'use client'は必要最小限の範囲に限定**
+- 親がクライアントコンポーネントでも、子はサーバーコンポーネントにできる（children propsを活用）
+- サーバーコンポーネントからクライアントコンポーネントにデータを渡す際は、シリアライズ可能な値のみ
+
+```typescript
+// 良い例: クライアントコンポーネントを最小限に
+export default async function Page() {
+  const data = await fetchData(); // サーバーで実行
+  
+  return (
+    <div>
+      <StaticContent data={data} /> {/* サーバーコンポーネント */}
+      <InteractiveButton /> {/* クライアントコンポーネント */}
+    </div>
+  );
+}
+```
+
+---
+
+## 4. ディレクトリ構造
+
+### App Router推奨構造
+
+```
+app/
+  [feature]/
+    page.tsx          # サーバーコンポーネント（ページエントリー）
+    layout.tsx        # レイアウト
+    loading.tsx       # ローディングUI
+    error.tsx         # エラーバウンダリ
+    [id]/
+      page.tsx
+      components/     # そのページ専用のコンポーネント
+        *.tsx
+      hooks/          # そのページ専用のカスタムフック
+        use-*.ts
+      lib/            # そのページ専用のユーティリティ
+        *.ts
+      types/          # そのページ専用の型定義
+        *.types.ts
+  api/
+    [endpoint]/
+      route.ts        # Route Handler
+
+components/
+  ui/                 # 汎用UIコンポーネント（shadcn/ui等）
+  shared/             # プロジェクト全体で共有するコンポーネント
+
+hooks/                # 汎用カスタムフック
+lib/                  # 汎用ユーティリティ
+types/                # 共通型定義
+```
+
+### ファイル命名規則
+
+- **コンポーネント**: `kebab-case.tsx` （このプロジェクトの規則）
+- **フック**: `use-hook-name.ts` （このプロジェクトの規則）
+- **ユーティリティ**: `kebab-case.ts`
+- **型定義**: `*.types.ts`
+
+---
+
+## 5. 状態管理
+
+### ローカル状態（useState）
+
+- コンポーネント内で完結する状態のみ
+- 3つ以上のstateが関連する場合はuseReducerを検討
+
+### サーバー状態
+
+- データベースやAPIから取得するデータ
+- **サーバーコンポーネントで直接取得を優先**
+- クライアント側で必要な場合はSWR, React Query等を活用
+- Next.jsのキャッシュ機能（unstable_cache, revalidateTag）を活用
+
+### URL状態
+
+- ページネーション、フィルタ、ソート順などはURLパラメータで管理
+- useSearchParams（クライアント）またはsearchParams（サーバー）を使用
+- ブックマーク可能な状態はURLで管理
+
+### グローバル状態
+
+- **本当に必要な場合のみ使用**（認証情報、テーマ設定、言語設定等）
+- Context API, Zustand, Jotai等を使用
+- 過度なグローバル化は避ける
+
+---
+
+## 6. データフェッチング
+
+### サーバーコンポーネントでの取得
+
+- `fetch`を使用（自動的にキャッシュされる）
+- Prisma等のORMを直接使用可能
+- `unstable_cache`でキャッシュ戦略を明示
+- `revalidatePath`, `revalidateTag`でキャッシュ無効化
+
+```typescript
+// キャッシュ戦略の例
+const getCachedData = unstable_cache(
+  async (id: string) => {
+    return db.data.findUnique({ where: { id } });
+  },
+  ['data-cache'],
+  { tags: [`data-${id}`], revalidate: 3600 }
+);
+```
+
+### クライアントコンポーネントでの取得
+
+- Route Handlers（/api/...）経由でアクセス
+- SWR, React Query等のライブラリを活用
+- loading/error状態を適切にハンドリング
+
+### キャッシュ戦略
+
+- **静的コンテンツ**: `force-cache`（デフォルト）
+- **動的コンテンツ**: `no-store`
+- **定期更新**: `revalidate: 秒数`
+
+---
+
+## 7. パフォーマンス最適化
+
+### レンダリング最適化
+
+- 不要な再レンダリングを防ぐ（React.memo, useMemo, useCallback）
+- **useMemoは計算コストが高い場合のみ使用**（早期最適化を避ける）
+- **useCallbackは子コンポーネントに渡す関数で使用**
+- **keyプロップを適切に設定**（リスト項目の一意性を保証）
+
+```typescript
+// 良い例: 子コンポーネントに渡す関数
+const handleClick = useCallback(() => {
+  // 処理
+}, [依存する値]);
+
+// 悪い例: 不要なuseMemo
+const value = useMemo(() => a + b, [a, b]); // 単純な計算には不要
+```
+
+### コード分割
+
+- dynamic importを活用（next/dynamic）
+- 初回表示に不要なコンポーネントは遅延ロード
+- SSR不要なものは `ssr: false` オプションを指定
+
+```typescript
+const HeavyComponent = dynamic(() => import('./HeavyComponent'), {
+  ssr: false,
+  loading: () => <Spinner />,
+});
+```
+
+### 画像最適化
+
+- next/imageを必ず使用
+- width, heightを明示してCLS（Cumulative Layout Shift）を防ぐ
+- priority属性をLCP（Largest Contentful Paint）要素に設定
+
+---
+
+## 8. エラーハンドリング
+
+### エラーバウンダリ
+
+- `error.tsx` でページレベルのエラーをキャッチ
+- 適切なフォールバックUIを提供
+- 開発環境と本番環境で表示を切り替え
+
+### APIエラー
+
+- try-catchで適切にハンドリング
+- ユーザーに分かりやすいエラーメッセージを表示
+- エラーログを記録（本番環境）
+
+```typescript
+try {
+  const result = await apiCall();
+  return result;
+} catch (error) {
+  console.error('API call failed:', error);
+  throw new Error('データの取得に失敗しました。もう一度お試しください。');
+}
+```
+
+---
+
+## 9. 型安全性
+
+### Zod等でランタイム検証
+
+- API境界でスキーマ検証を行う
+- フォーム入力値を検証
+- 環境変数を検証
+
+```typescript
+import { z } from 'zod';
+
+const UserSchema = z.object({
+  id: z.string(),
+  name: z.string(),
+  email: z.string().email(),
+});
+
+type User = z.infer<typeof UserSchema>;
+```
+
+### 型定義の共通化
+
+- 複数箇所で使用する型は共通ファイルに定義
+- APIレスポンスの型を定義
+- Prismaスキーマから型を生成（自動生成を活用）
+
+---
+
+## 10. アクセシビリティ
+
+### セマンティックHTML
+
+- 適切なHTML要素を使用（button, nav, main, article等）
+- heading階層を正しく設定（h1 → h2 → h3）
+
+### キーボード操作
+
+- フォーカス管理を適切に行う
+- キーボードで全ての操作が可能に
+- tabIndexを適切に設定
+
+### ARIA属性
+
+- 必要に応じてaria-label, aria-describedby等を追加
+- スクリーンリーダーでの体験を考慮
+- role属性を適切に使用
+
+---
+
+## チェックリスト（新規コンポーネント作成時）
+
+コンポーネント作成前に以下を確認:
+
+- [ ] コンポーネントは150行以内か？
+- [ ] 単一責務を守っているか？
+- [ ] 複雑なロジックはカスタムフックに分離したか？
+- [ ] 'use client'は必要最小限か？
+- [ ] Props数は適切か？（10個以内推奨）
+- [ ] 型定義は適切か？
+- [ ] エラーハンドリングは実装したか？
+- [ ] アクセシビリティを考慮したか？
+- [ ] パフォーマンスは問題ないか？
+- [ ] キャッシュ戦略は適切か？
+
+---
+
+## リファクタリングのトリガー
+
+以下の状態になったら、積極的にリファクタリングを検討:
+
+1. **コンポーネントが200行を超えた**
+2. **useState/useEffectが5つ以上ある**
+3. **Props数が15個を超えた**
+4. **同じロジックが3箇所以上に現れた（DRY違反）**
+5. **関数の依存配列が5つ以上になった**
+6. **ネストが4階層以上になった**
+
+これらは技術的負債の兆候であり、早期の対処が重要。
+
+---
+
+## ベストプラクティス
+
+### Server Actionsの活用
+
+- フォーム送信はServer Actionsを優先
+- revalidatePathでキャッシュを適切に無効化
+- エラーハンドリングを忘れずに
+
+### Parallel Data Fetching
+
+- 複数のデータ取得は並列化
+- Promise.allを活用
+
+```typescript
+const [user, posts] = await Promise.all([
+  fetchUser(id),
+  fetchPosts(id),
+]);
+```
+
+### Suspense境界の設定
+
+- データ取得コンポーネントをSuspenseでラップ
+- 適切なローディングUIを提供
+
+```typescript
+<Suspense fallback={<Loading />}>
+  <DataComponent />
+</Suspense>
+```
+
+---
+
+このガイドラインに従うことで、保守性が高く、パフォーマンスに優れた Next.js アプリケーションを構築できる。

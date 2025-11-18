@@ -1,9 +1,6 @@
 ---
-description: "TypeScript プロジェクト指示書（共通ルール）"
-globs: ["src/**/*.ts", "config/**/*.ts", "scripts/**/*.ts", "test/**/*.ts"]
-alwaysApply: true
+alwaysApply: false
 ---
-
 # TypeScript プロジェクト指示書
 
 ## 開発姿勢（最重要原則）
