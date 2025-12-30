@@ -1,8 +1,17 @@
-# コミットメッセージ (ステージされた変更)
+# コミットメッセージ生成
 
-以下のステージされたgit diffを読み、conventional commit形式（feat:, fix:, refactor:など）を使用して、簡潔で明確なコミットメッセージを日本語で生成してください。
+以下のステージされた変更から、conventional commit形式のコミットメッセージを**英語**で生成してください。
 
-\```で囲って出力してください
+## 要件
+- 形式: `{type}: {imperative verb} {what}`
+- 一行で完結（50文字以内推奨）
+- 動詞は命令形（add, fix, update, remove など）
+- 詳細は不要。WHYが重要な場合のみ本文を追加
 
-```bash
+## 例
+- `feat: add weekly report generation`
+- `fix: correct date calculation in parser`
+- `refactor: extract validation logic to util`
+
+## 変更内容
 {{exec:git diff --cached}}
