@@ -1,0 +1,196 @@
+---
+description: "Gitブランチ管理とワークフロールール"
+globs: ["**/*"]
+alwaysApply: true
+---
+
+# Git ブランチ管理ルール
+
+## 基本方針
+
+- **軽微な修正・バグ修正はdevelopブランチで直接OK**
+- **大きな機能開発や複雑な変更の時はブランチを切る**
+
+## ブランチを切るべきケース
+
+以下の場合は、必ずブランチを作成してから実装：
+
+### 必須でブランチを切る：
+- **新機能の追加**（新しいAPI、新しいページ、新しいコンポーネントなど）
+- **大規模なリファクタリング**（アーキテクチャ変更、複数ファイルの大幅な書き換え）
+- **実験的な変更**（試してみたい変更、ユーザーの承認が必要な変更）
+- **複数の変更を含む実装**（10ファイル以上の変更、100行以上の追加/削除）
+
+### ブランチ作成手順：
+```bash
+# 機能追加の場合
+git checkout -b feature/[機能名-kebab-case]
+
+# 大規模リファクタの場合
+git checkout -b refactor/[内容-kebab-case]
+```
+
+### 実装完了後：
+- **ユーザーが承認** → `git checkout develop && git merge [ブランチ名]`
+- **ユーザーが却下** → `git checkout develop && git branch -D [ブランチ名]`
+
+## developブランチで直接実装してOKなケース
+
+以下の軽微な変更は、developブランチで直接実装可能：
+
+- **バグ修正**（既存機能の小さな不具合修正）
+- **タイポ修正**（変数名、コメント、ドキュメントなど）
+- **コメントや型定義の追加**
+- **軽微なスタイル調整**（CSS、UI微調整）
+- **既存コードの小さな改善**（1-2ファイル、50行以内の変更）
+- **ドキュメント更新**（README、コメントなど）
+- **テストの追加・修正**
+
+## ブランチ命名規則
+
+| 種類 | プレフィックス | 例 |
+|------|----------------|-----|
+| 新機能 | `feature/` | `feature/user-authentication` |
+| 大規模リファクタリング | `refactor/` | `refactor/api-structure` |
+| 実験的変更 | `experiment/` | `experiment/new-ui-design` |
+
+## ブランチを切る理由
+
+- **安全性**: 大きな変更を試して、気に入らなければ簡単に元に戻せる
+- **レビュー**: 大きな機能を段階的に確認できる
+- **履歴**: 機能ごとの変更履歴が明確になる
+
+## 判断に迷った場合
+
+以下のチェックリストで判断：
+- [ ] 10ファイル以上変更する？ → **ブランチを切る**
+- [ ] 100行以上追加/削除する？ → **ブランチを切る**
+- [ ] 新しい機能を追加する？ → **ブランチを切る**
+- [ ] 既存の動作を大きく変える？ → **ブランチを切る**
+- [ ] 上記に該当しない？ → **developで直接OK**
+
+## ブランチを誤って使った場合
+
+大きな変更をdevelopで直接コミットしてしまった場合：
+
+```bash
+# 最新のコミットを取り消し（変更は保持）
+git reset --soft HEAD~1
+
+# 新しいブランチを作成
+git checkout -b feature/[適切な名前]
+
+# 再度コミット
+git add .
+git commit -m "適切なコミットメッセージ"
+```
+
+---
+
+## GTR（Git Worktree Runner）を使った並列開発
+
+このプロジェクトではGTRを導入しており、複数のブランチを同時に開発できる環境が整っています。
+
+### GTRとは
+
+Git Worktreeを簡単に管理できるツールで、以下が自動化されます：
+- ブランチごとの独立した作業ディレクトリの作成
+- `npm install`の自動実行
+- `.env.local`ファイルの自動コピー
+- `npx prisma generate`の自動実行
+
+### GTRを使うメリット
+
+- **複数のAIエージェントに並列でタスクを依頼できる**
+- **ブランチ切り替え時のコンテキストスイッチがなくなる**
+- **環境構築が完全自動化される**
+- **複数の機能を同時並行で開発できる**
+
+### GTRの基本コマンド
+
+#### 新しいブランチを作成して開発開始
+```bash
+# 新しいワークツリーを作成（自動で環境構築）
+git gtr new feature/contact-form
+
+# Cursorで開いてAI開発を開始
+git gtr ai feature/contact-form
+```
+
+#### ワークツリー一覧を確認
+```bash
+git gtr list
+```
+
+#### 開発完了後の削除
+```bash
+git gtr rm feature/contact-form
+```
+
+#### エディタで開く
+```bash
+git gtr editor feature/contact-form
+```
+
+### GTRを使った並列開発ワークフロー
+
+#### 例：複数の機能を並行して開発
+
+```bash
+# 機能A: お問い合わせフォーム
+git gtr new feature/contact-form
+git gtr ai feature/contact-form
+
+# 機能B: ユーザー認証（別ターミナル）
+git gtr new feature/user-auth
+git gtr ai feature/user-auth
+
+# 機能C: UI改善（別ターミナル）
+git gtr new feature/ui-improvement
+git gtr ai feature/ui-improvement
+
+# それぞれのAIエージェントが独立して開発可能
+# コンテキストスイッチなし、環境構築済み
+```
+
+#### 開発完了後のマージ
+
+```bash
+# 元のリポジトリに戻る
+cd /Users/ogawakazuki/bizdev/atoyoro-integerate/atoyoro
+
+# 開発したブランチをマージ
+git checkout develop
+git merge feature/contact-form
+
+# ワークツリーを削除
+git gtr rm feature/contact-form
+```
+
+### GTRと従来のgit checkoutの使い分け
+
+| シチュエーション | 推奨方法 | 理由 |
+|-----------------|---------|------|
+| 複数ブランチを並行開発 | **GTR** | 環境が独立、切り替え不要 |
+| AIエージェントに依頼 | **GTR** | 自動環境構築で即開発可能 |
+| 複数タスクを同時進行 | **GTR** | コンテキストスイッチなし |
+| 軽微な修正・確認 | **git checkout** | シンプルで十分 |
+| 一時的な確認作業 | **git checkout** | ワークツリー不要 |
+
+### GTR使用時の注意点
+
+- ワークツリーは`.worktrees/`ディレクトリに作成される（.gitignore済み）
+- 各ワークツリーは完全に独立した環境（node_modules、.env.local含む）
+- 不要になったワークツリーは必ず`git gtr rm`で削除する
+- `git gtr list`で定期的にワークツリーを確認する習慣をつける
+
+### GTR設定ファイル
+
+プロジェクトルートの`.gtrconfig`で以下が自動実行されます：
+```
+- npm install（依存関係インストール）
+- .env.localのコピー（環境変数設定）
+- npx prisma generate（Prismaクライアント生成）
+```
+
+この設定により、`git gtr new`でワークツリーを作成すると、すぐに開発を開始できる状態になります。
